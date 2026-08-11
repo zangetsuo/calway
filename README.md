@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CalWay
 
-## Getting Started
+Calculadora de calorias para sanduíches do Subway®. Você monta o sub —
+tamanho, pão, proteína, queijo, adicionais, vegetais, molhos, condimentos e
+acompanhamento — e vê calorias, macronutrientes, sódio e o percentual de
+valor diário atualizarem em tempo real.
 
-First, run the development server:
+Cada item escolhido aceita **dobro** (ou triplo) pelo controle `− / +`, do
+mesmo jeito que a Subway cobra o adicional. Bacon, cheddar cremoso e cream
+cheese ficam na categoria **Adicionais** e somam por cima da proteína e do
+queijo que você já escolheu.
+
+## Fonte dos dados
+
+Todos os valores vêm da **tabela nutricional oficial da Subway Brasil**
+(revisão de 02/01/2023), transcrita em `src/lib/data.ts`:
+
+<https://sbw-cms.zamp.com.br/Tabela_Nutricional_02_01_2023_fa9b77005f/Tabela_Nutricional_02_01_2023_fa9b77005f.pdf>
+
+São 54 itens em 8 categorias. Cada valor foi conferido campo a campo
+(porção, kcal, carboidratos, proteínas, gorduras, fibras e sódio) contra o
+PDF oficial. Os Valores Diários de Referência seguem a
+IN nº 75 da ANVISA (8/10/2020), base de 2.000 kcal.
+
+### Como o tamanho é calculado
+
+A tabela oficial publica as porções para o sub de **15 cm**. Para o de
+30 cm, o app dobra os componentes do sanduíche (pão, proteína, queijo,
+vegetais, molhos, condimentos). Acompanhamentos — cookie, batata, maçã —
+não escalam, porque não fazem parte do sanduíche.
+
+Isso é uma **estimativa**. Montagem, fornecedor e região alteram os
+valores reais.
+
+## Rodando localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+npm run build    # build de produção (estático)
+npm start
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## O visual
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+O centro da interface é um **corte transversal do sanduíche que se desenha
+sozinho**. Cada ingrediente escolhido entra como uma camada com silhueta
+própria — o pão em cúpula, o queijo escorrendo, a alface recortada, o tomate
+em rodelas, o molho em fio — e puxa uma linha de chamada até as próprias
+calorias. Clicar numa camada tira o ingrediente.
 
-## Learn More
+- Cada pão tem o próprio acabamento: casca em volta, miolo com bolhas de ar,
+  os cortes diagonais da broa e a cobertura certa — sementes no 9 grãos,
+  queijo gratinado no 3 queijos, ervas no parmesão e orégano, brilho de
+  manteiga no de alho
+- Os vegetais carregam o detalhe que os identifica: azeitona é anel com furo,
+  picles tem corte ondulado, cebola vira anéis concêntricos, tomate mostra
+  as sementes
+- Fundo papel quente, traço carvão fino, nada de branco puro nem preto puro
+- As cores vêm do alimento, não da marca: miolo de pão, verde de alface,
+  vermelho de tomate
+- A tipografia fica de propósito quieta, para o desenho carregar a tela
+- Acompanhamentos (cookie, batata, maçã) ficam fora do corte, porque não
+  fazem parte do sanduíche — mas continuam somando no total
 
-To learn more about Next.js, take a look at the following resources:
+O mapa visual mora em `src/lib/visuals.ts`, separado de `data.ts`: aquele
+arquivo é a transcrição conferida da tabela oficial e não recebe campo de
+aparência.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estrutura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Arquivo | O que faz |
+| --- | --- |
+| `src/lib/data.ts` | A tabela nutricional inteira, tipada |
+| `src/lib/calc.ts` | Soma a seleção, aplica quantidade e tamanho, calcula %VD e macros |
+| `src/components/builder.tsx` | Estado da montagem e os seletores |
+| `src/components/sandwich-diagram.tsx` | O corte transversal: silhuetas, empilhamento e linhas de chamada |
+| `src/lib/visuals.ts` | Cor, silhueta e ordem de cada ingrediente no desenho |
+| `src/components/nutrition-panel.tsx` | Painel de resumo e barra fixa do mobile |
 
-## Deploy on Vercel
+## Aviso
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Projeto independente, sem qualquer vínculo com a Subway IP LLC.
+Subway® é marca registrada da Subway IP LLC.

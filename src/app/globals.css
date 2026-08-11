@@ -1,26 +1,127 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* papel quente — o desenho precisa de um fundo que não seja branco puro */
+  --color-canvas: oklch(97.6% 0.010 85);
+  --color-surface: oklch(99.4% 0.004 85);
+  --color-surface-alt: oklch(95.4% 0.012 85);
+  --color-line: oklch(90% 0.012 80);
+  --color-line-soft: oklch(93.5% 0.010 80);
+
+  /* traço e texto: carvão quente, nunca preto puro */
+  --color-ink: oklch(28% 0.018 65);
+  --color-ink-soft: oklch(48% 0.016 65);
+  --color-ink-faint: oklch(64% 0.014 70);
+
+  /* acento vindo do alimento: azeitona/erva */
+  --color-accent: oklch(52% 0.095 135);
+  --color-accent-deep: oklch(42% 0.085 135);
+  --color-accent-soft: oklch(94.5% 0.032 135);
+  --color-warn: oklch(55% 0.150 40);
+
+  /* macros */
+  --color-macro-protein: oklch(52% 0.110 240);
+  --color-macro-carb: oklch(68% 0.130 70);
+  --color-macro-fat: oklch(58% 0.150 30);
+
+  --radius-card: 0.875rem;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent-deep);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .eyebrow {
+    font-size: 0.67rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+/* cada camada nova entra deslizando de cima, como se fosse colocada */
+@keyframes layer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-layer {
+  animation: layer-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
