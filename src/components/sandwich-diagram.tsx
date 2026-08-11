@@ -112,10 +112,96 @@ export function SandwichDiagram({
             floodOpacity="0.18"
           />
         </filter>
+
+        {/*
+          Borda irregular + granulado. A geometria continua desenhada à mão,
+          mas o ruído quebra a perfeição do vetor: é o que faz a fatia parecer
+          cortada em vez de traçada.
+        */}
+        <filter
+          id={`${uid}-organic`}
+          x="-12%"
+          y="-25%"
+          width="124%"
+          height="150%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.028 0.06"
+            numOctaves="2"
+            seed="11"
+            result="warp"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="warp"
+            scale="4"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="edge"
+          />
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.55"
+            numOctaves="3"
+            seed="5"
+            result="speck"
+          />
+          <feColorMatrix in="speck" type="saturate" values="0" result="grey" />
+          <feComponentTransfer in="grey" result="grain">
+            <feFuncA type="linear" slope="0.34" intercept="-0.12" />
+          </feComponentTransfer>
+          <feComposite in="grain" in2="edge" operator="in" result="grainOnShape" />
+          <feBlend in="edge" in2="grainOnShape" mode="multiply" />
+        </filter>
+
+        {/* mesma ideia, mais contida, para o pão */}
+        <filter
+          id={`${uid}-crumbly`}
+          x="-10%"
+          y="-16%"
+          width="120%"
+          height="136%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.05 0.09"
+            numOctaves="2"
+            seed="23"
+            result="warp"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="warp"
+            scale="2.6"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="edge"
+          />
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.32"
+            numOctaves="3"
+            seed="9"
+            result="speck"
+          />
+          <feColorMatrix in="speck" type="saturate" values="0" result="grey" />
+          <feComponentTransfer in="grey" result="grain">
+            <feFuncA type="linear" slope="0.44" intercept="-0.15" />
+          </feComponentTransfer>
+          <feComposite in="grain" in2="edge" operator="in" result="grainOnShape" />
+          <feBlend in="edge" in2="grainOnShape" mode="multiply" />
+        </filter>
       </defs>
 
       <g filter={`url(#${uid}-lift)`}>
-        {bread && breadVisual && <Crown visual={breadVisual} uid={uid} />}
+        {bread && breadVisual && (
+          <g filter={`url(#${uid}-crumbly)`}>
+            <Crown visual={breadVisual} uid={uid} />
+          </g>
+        )}
 
         {layers.map((layer) => (
           <g
@@ -125,7 +211,9 @@ export function SandwichDiagram({
             style={{ cursor: onRemove ? "pointer" : undefined }}
           >
             <title>{`${layer.line.name} — clique para tirar`}</title>
-            <LayerShape layer={layer} uid={uid} />
+            <g filter={`url(#${uid}-organic)`}>
+              <LayerShape layer={layer} uid={uid} />
+            </g>
             <rect
               x={X0 - layer.overhang}
               y={layer.top - Math.max(0, (13 - layer.height) / 2)}
@@ -136,7 +224,11 @@ export function SandwichDiagram({
           </g>
         ))}
 
-        {bread && breadVisual && <Base visual={breadVisual} y={baseTop} uid={uid} />}
+        {bread && breadVisual && (
+          <g filter={`url(#${uid}-crumbly)`}>
+            <Base visual={breadVisual} y={baseTop} uid={uid} />
+          </g>
+        )}
       </g>
 
       {labelled.map((entry, index) => {
