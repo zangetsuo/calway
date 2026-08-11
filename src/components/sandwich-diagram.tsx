@@ -115,7 +115,7 @@ export function SandwichDiagram({
       </defs>
 
       <g filter={`url(#${uid}-lift)`}>
-        {bread && breadVisual && <Crown visual={breadVisual} />}
+        {bread && breadVisual && <Crown visual={breadVisual} uid={uid} />}
 
         {layers.map((layer) => (
           <g
@@ -125,7 +125,7 @@ export function SandwichDiagram({
             style={{ cursor: onRemove ? "pointer" : undefined }}
           >
             <title>{`${layer.line.name} — clique para tirar`}</title>
-            <LayerShape layer={layer} />
+            <LayerShape layer={layer} uid={uid} />
             <rect
               x={X0 - layer.overhang}
               y={layer.top - Math.max(0, (13 - layer.height) / 2)}
@@ -136,7 +136,7 @@ export function SandwichDiagram({
           </g>
         ))}
 
-        {bread && breadVisual && <Base visual={breadVisual} y={baseTop} />}
+        {bread && breadVisual && <Base visual={breadVisual} y={baseTop} uid={uid} />}
       </g>
 
       {labelled.map((entry, index) => {
@@ -232,7 +232,7 @@ const POCKETS = [
   [0.38, 0.55, 1.2], [0.62, 0.52, 1.3],
 ] as const;
 
-function Crown({ visual }: { visual: Visual }) {
+function Crown({ visual, uid }: { visual: Visual; uid: string }) {
   const crumb = visual.color;
   const crust = shade(crumb, -0.26);
   const y = TOP_Y;
@@ -241,7 +241,21 @@ function Crown({ visual }: { visual: Visual }) {
 
   return (
     <g>
-      <path d={`${outline} Z`} fill={shade(crumb, 0.3)} />
+      <defs>
+        <linearGradient
+          id={`${uid}-crown`}
+          x1="0"
+          y1={y}
+          x2="0"
+          y2={y + h}
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor={shade(crumb, 0.4)} />
+          <stop offset="55%" stopColor={shade(crumb, 0.3)} />
+          <stop offset="100%" stopColor={shade(crumb, 0.12)} />
+        </linearGradient>
+      </defs>
+      <path d={`${outline} Z`} fill={`url(#${uid}-crown)`} />
       {/* casca só na parte de fora; a base é a face cortada */}
       <path
         d={outline}
@@ -258,7 +272,7 @@ function Crown({ visual }: { visual: Visual }) {
   );
 }
 
-function Base({ visual, y }: { visual: Visual; y: number }) {
+function Base({ visual, y, uid }: { visual: Visual; y: number; uid: string }) {
   const crumb = visual.color;
   const crust = shade(crumb, -0.26);
   const w = X1 - X0;
@@ -274,7 +288,20 @@ function Base({ visual, y }: { visual: Visual; y: number }) {
 
   return (
     <g>
-      <path d={`${rim} Z`} fill={shade(crumb, 0.3)} />
+      <defs>
+        <linearGradient
+          id={`${uid}-base`}
+          x1="0"
+          y1={y}
+          x2="0"
+          y2={y + BASE_H}
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor={shade(crumb, 0.18)} />
+          <stop offset="100%" stopColor={shade(crumb, 0.34)} />
+        </linearGradient>
+      </defs>
+      <path d={`${rim} Z`} fill={`url(#${uid}-base)`} />
       <path
         d={rim}
         fill="none"
@@ -465,24 +492,71 @@ function BreadTopping({ kind }: { kind: BreadTopping }) {
 
 /* ---------- recheios ---------- */
 
-function LayerShape({ layer }: { layer: Layer }) {
-  const { color, kind, top, height, overhang } = layer;
+/**
+ * Sombra de contato e volume. Cada camada recebe o mesmo tratamento: um
+ * degradê próprio de cima para baixo e uma sombra projetada pela camada de
+ * cima. É o que separa as fatias sem precisar de contorno.
+ */
+function Shading({
+  id,
+  top,
+  height,
+  color,
+}: {
+  id: string;
+  top: number;
+  height: number;
+  color: string;
+}) {
+  return (
+    <defs>
+      <linearGradient
+        id={`${id}-body`}
+        x1="0"
+        y1={top}
+        x2="0"
+        y2={top + height}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0%" stopColor={shade(color, 0.2)} />
+        <stop offset="42%" stopColor={color} />
+        <stop offset="100%" stopColor={shade(color, -0.2)} />
+      </linearGradient>
+      <linearGradient
+        id={`${id}-contact`}
+        x1="0"
+        y1={top}
+        x2="0"
+        y2={top + height * 0.55}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0%" stopColor="#2E1B0B" stopOpacity="0.30" />
+        <stop offset="100%" stopColor="#2E1B0B" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+  );
+}
+
+function LayerShape({ layer, uid }: { layer: Layer; uid: string }) {
+  const { color, kind, top, height, overhang, line } = layer;
   const x0 = X0 - overhang;
   const x1 = X1 + overhang;
   const w = x1 - x0;
   const dark = shade(color, -0.15);
   const light = shade(color, 0.26);
-
-  // profundidade sem brilho solto: a mesma silhueta, mais escura, deslocada
-  // 2,5 para baixo, aparece só como um lábio na borda inferior
+  const id = `${uid}-${line.id}`;
+  const body = `url(#${id}-body)`;
+  const contact = `url(#${id}-contact)`;
   const LIP = 2.5;
+
+  const shading = (
+    <Shading id={id} top={top} height={height} color={color} />
+  );
 
   switch (kind) {
     case "ruffle": {
-      // alface: arcos iguais e generosos
       const bumps = 9;
       const unit = w / bumps;
-      // a folha tem corpo: faixa cheia embaixo, lobos subindo por cima
       const spine = height * 0.52;
       const shape = (dy: number) => {
         let d = `M ${x0} ${top + height + dy} L ${x0} ${top + spine + dy}`;
@@ -495,14 +569,31 @@ function LayerShape({ layer }: { layer: Layer }) {
       };
       return (
         <g>
+          {shading}
           <path d={shape(LIP)} fill={dark} />
-          <path d={shape(0)} fill={color} />
+          <path d={shape(0)} fill={body} />
+          {/* nervuras: sobem do talo até a ponta de cada lobo */}
+          <g stroke={light} strokeWidth="0.8" strokeLinecap="round" opacity="0.55">
+            {Array.from({ length: bumps }, (_, i) => {
+              const sx = x0 + unit * (i + 0.5);
+              const lift = i % 2 === 0 ? height * 0.72 : height * 0.5;
+              return (
+                <line
+                  key={i}
+                  x1={sx}
+                  y1={top + height - 1.5}
+                  x2={sx}
+                  y2={top + height - lift}
+                />
+              );
+            })}
+          </g>
+          <path d={shape(0)} fill={contact} />
         </g>
       );
     }
 
     case "drape": {
-      // queijo: pingos triangulares regulares
       const teeth = 7;
       const tw = w / teeth;
       const shape = (dy: number) => {
@@ -518,8 +609,20 @@ function LayerShape({ layer }: { layer: Layer }) {
       };
       return (
         <g>
+          {shading}
           <path d={shape(LIP)} fill={dark} />
-          <path d={shape(0)} fill={color} />
+          <path d={shape(0)} fill={body} />
+          {/* brilho de queijo derretido */}
+          <rect
+            x={x0 + w * 0.1}
+            y={top + height * 0.18}
+            width={w * 0.42}
+            height={height * 0.16}
+            rx={height * 0.08}
+            fill={shade(color, 0.45)}
+            opacity="0.5"
+          />
+          <path d={shape(0)} fill={contact} />
         </g>
       );
     }
@@ -533,6 +636,7 @@ function LayerShape({ layer }: { layer: Layer }) {
 
       return (
         <g>
+          {shading}
           <rect
             x={x0}
             y={top + height * 0.3}
@@ -547,14 +651,12 @@ function LayerShape({ layer }: { layer: Layer }) {
               <g key={i}>
                 <ellipse cx={cx} cy={cy + LIP} rx={rx} ry={ry} fill={dark} />
                 {layer.discStyle === "crinkle" ? (
-                  // picles é corte ondulado: a borda serrilhada é a marca dele
-                  <path d={crinkleEllipse(cx, cy, rx, ry)} fill={color} />
+                  <path d={crinkleEllipse(cx, cy, rx, ry)} fill={body} />
                 ) : (
-                  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={color} />
+                  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={body} />
                 )}
 
                 {layer.discStyle === "ring" ? (
-                  // azeitona fatiada é um anel: o furo é o que a identifica
                   <ellipse
                     cx={cx}
                     cy={cy}
@@ -572,56 +674,63 @@ function LayerShape({ layer }: { layer: Layer }) {
                   />
                 )}
 
-                {layer.discStyle === "seeded" &&
-                  [-0.5, 0, 0.5].map((o, k) => (
-                    <ellipse
-                      key={k}
-                      cx={cx + o * rx * 0.55}
-                      cy={cy - height * 0.06}
-                      rx={rx * 0.09}
-                      ry={ry * 0.16}
-                      fill={shade(color, 0.5)}
-                    />
-                  ))}
+                {layer.discStyle === "seeded" && (
+                  <g>
+                    {/* lóculos: a polpa gelatinosa e as sementes dentro */}
+                    {[-0.52, 0, 0.52].map((o, k) => (
+                      <ellipse
+                        key={`p${k}`}
+                        cx={cx + o * rx * 0.62}
+                        cy={cy - height * 0.05}
+                        rx={rx * 0.17}
+                        ry={ry * 0.3}
+                        fill={shade(color, 0.44)}
+                      />
+                    ))}
+                    {[-0.52, 0, 0.52].map((o, k) => (
+                      <ellipse
+                        key={`s${k}`}
+                        cx={cx + o * rx * 0.62}
+                        cy={cy - height * 0.05}
+                        rx={rx * 0.07}
+                        ry={ry * 0.14}
+                        fill={shade(color, 0.68)}
+                      />
+                    ))}
+                  </g>
+                )}
 
                 {layer.discStyle === "pale-core" && (
-                  <ellipse
-                    cx={cx}
-                    cy={cy}
-                    rx={rx * 0.26}
-                    ry={ry * 0.3}
-                    fill={shade(color, 0.42)}
-                  />
+                  <g>
+                    <ellipse
+                      cx={cx}
+                      cy={cy}
+                      rx={rx * 0.3}
+                      ry={ry * 0.34}
+                      fill={shade(color, 0.42)}
+                    />
+                    {[-0.4, 0.4].map((o, k) => (
+                      <ellipse
+                        key={k}
+                        cx={cx + o * rx * 0.3}
+                        cy={cy}
+                        rx={rx * 0.05}
+                        ry={ry * 0.1}
+                        fill={shade(color, -0.2)}
+                        opacity="0.6"
+                      />
+                    ))}
+                  </g>
                 )}
-              </g>
-            );
-          })}
-        </g>
-      );
-    }
 
-    case "rings": {
-      // cebola: arcos concêntricos, como anéis vistos de lado
-      const arcs = 5;
-      const seg = w / arcs;
-      return (
-        <g>
-          {Array.from({ length: arcs }, (_, i) => {
-            const cx = x0 + seg * (i + 0.5);
-            return (
-              <g key={i}>
-                <path
-                  d={`M ${cx - seg * 0.44} ${top + height} A ${seg * 0.44} ${height * 0.92} 0 0 1 ${cx + seg * 0.44} ${top + height}`}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={height * 0.32}
-                />
-                <path
-                  d={`M ${cx - seg * 0.24} ${top + height} A ${seg * 0.24} ${height * 0.5} 0 0 1 ${cx + seg * 0.24} ${top + height}`}
-                  fill="none"
-                  stroke={dark}
-                  strokeWidth={height * 0.2}
-                  opacity="0.7"
+                {/* reflexo: as rodelas são úmidas */}
+                <ellipse
+                  cx={cx - rx * 0.42}
+                  cy={cy - ry * 0.5}
+                  rx={rx * 0.26}
+                  ry={ry * 0.16}
+                  fill="#fff"
+                  opacity="0.28"
                 />
               </g>
             );
@@ -631,27 +740,34 @@ function LayerShape({ layer }: { layer: Layer }) {
     }
 
     case "strips": {
-      // bacon: onda regular, duas tiras defasadas
       const h = height * 0.4;
       const periods = 4;
       const seg = w / periods;
       const amp = h * 0.75;
+      const wave = (y: number, phase: number) => {
+        let d = `M ${x0} ${y}`;
+        for (let i = 0; i < periods; i++) {
+          const sx = x0 + i * seg;
+          d += ` Q ${sx + seg / 4} ${y - amp * phase} ${sx + seg / 2} ${y}`;
+          d += ` Q ${sx + (seg * 3) / 4} ${y + amp * phase} ${sx + seg} ${y}`;
+        }
+        return d;
+      };
       return (
         <g>
+          {shading}
           {[0, 1].map((row) => {
             const y = top + row * (height * 0.55) + h / 2;
             const phase = row === 0 ? 1 : -1;
-            let d = `M ${x0} ${y}`;
-            for (let i = 0; i < periods; i++) {
-              const sx = x0 + i * seg;
-              d += ` Q ${sx + seg / 4} ${y - amp * phase} ${sx + seg / 2} ${y}`;
-              d += ` Q ${sx + (seg * 3) / 4} ${y + amp * phase} ${sx + seg} ${y}`;
-            }
+            const d = wave(y, phase);
             return (
               <g key={row}>
                 <path d={d} fill="none" stroke={dark} strokeWidth={h} strokeLinecap="round" transform={`translate(0 ${LIP})`} />
                 <path d={d} fill="none" stroke={color} strokeWidth={h} strokeLinecap="round" />
-                <path d={d} fill="none" stroke={light} strokeWidth={h * 0.28} strokeLinecap="round" opacity="0.7" />
+                {/* vetas de gordura, o que faz virar bacon e não fita */}
+                <path d={wave(y - h * 0.22, phase)} fill="none" stroke={shade(color, 0.5)} strokeWidth={h * 0.24} strokeLinecap="round" opacity="0.85" />
+                <path d={wave(y + h * 0.24, phase)} fill="none" stroke={shade(color, 0.38)} strokeWidth={h * 0.16} strokeLinecap="round" opacity="0.7" />
+                <path d={d} fill="none" stroke={shade(color, -0.32)} strokeWidth={h} strokeLinecap="round" opacity="0.16" transform={`translate(0 ${-h * 0.34})`} />
               </g>
             );
           })}
@@ -672,29 +788,69 @@ function LayerShape({ layer }: { layer: Layer }) {
       }
       return (
         <g>
+          {shading}
           <path d={d} fill="none" stroke={dark} strokeWidth={height * 0.82} strokeLinecap="round" transform={`translate(0 ${LIP * 0.7})`} />
           <path d={d} fill="none" stroke={color} strokeWidth={height * 0.82} strokeLinecap="round" />
+          {/* fio de luz: molho é brilhante */}
+          <path d={d} fill="none" stroke={shade(color, 0.5)} strokeWidth={height * 0.2} strokeLinecap="round" opacity="0.7" transform={`translate(0 ${-height * 0.2})`} />
+        </g>
+      );
+    }
+
+    case "rings": {
+      const arcs = 5;
+      const seg = w / arcs;
+      return (
+        <g>
+          {Array.from({ length: arcs }, (_, i) => {
+            const cx = x0 + seg * (i + 0.5);
+            return (
+              <g key={i}>
+                <path
+                  d={`M ${cx - seg * 0.44} ${top + height} A ${seg * 0.44} ${height * 0.92} 0 0 1 ${cx + seg * 0.44} ${top + height}`}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={height * 0.32}
+                />
+                <path
+                  d={`M ${cx - seg * 0.44} ${top + height} A ${seg * 0.44} ${height * 0.92} 0 0 1 ${cx + seg * 0.44} ${top + height}`}
+                  fill="none"
+                  stroke={shade(color, -0.28)}
+                  strokeWidth={height * 0.08}
+                  opacity="0.45"
+                />
+                <path
+                  d={`M ${cx - seg * 0.24} ${top + height} A ${seg * 0.24} ${height * 0.5} 0 0 1 ${cx + seg * 0.24} ${top + height}`}
+                  fill="none"
+                  stroke={dark}
+                  strokeWidth={height * 0.2}
+                  opacity="0.7"
+                />
+              </g>
+            );
+          })}
         </g>
       );
     }
 
     case "crumbs": {
       const per = 13;
-      const s = height * 0.44;
+      const sz = height * 0.44;
       return (
         <g>
           {[0, 1].flatMap((row) =>
             Array.from({ length: per }, (_, i) => {
               const t = (i + (row === 1 ? 0.5 : 0)) / per;
+              const tone = (i + row) % 3;
               return (
                 <rect
                   key={`${row}-${i}`}
                   x={x0 + 4 + t * (w - 10)}
                   y={top + (row === 0 ? height * 0.1 : height * 0.5)}
-                  width={s * 1.7}
-                  height={s}
-                  rx={s / 2}
-                  fill={row === 0 ? color : dark}
+                  width={sz * 1.7}
+                  height={sz}
+                  rx={sz / 2}
+                  fill={tone === 0 ? light : tone === 1 ? color : dark}
                 />
               );
             }),
@@ -707,10 +863,32 @@ function LayerShape({ layer }: { layer: Layer }) {
     case "band":
     default: {
       const r = Math.min(height / 2, 9);
+      const fibres = Math.max(3, Math.round(height / 5));
       return (
         <g>
+          {shading}
           <rect x={x0} y={top + LIP} width={w} height={height} rx={r} fill={dark} />
-          <rect x={x0} y={top} width={w} height={height} rx={r} fill={color} />
+          <rect x={x0} y={top} width={w} height={height} rx={r} fill={body} />
+          {/* fibras: traços curtos escalonados, como estriação de músculo */}
+          <g strokeLinecap="round" opacity="0.4">
+            {Array.from({ length: fibres }, (_, i) =>
+              [0, 1, 2].map((k) => {
+                const fy = top + height * ((i + 1) / (fibres + 1));
+                const span = w * (0.18 + ((i + k) % 3) * 0.09);
+                const sx = x0 + 10 + ((k * 0.34 + i * 0.11) % 0.78) * (w - 20);
+                return (
+                  <path
+                    key={`${i}-${k}`}
+                    d={`M ${sx} ${fy} q ${span / 2} ${(i % 2 === 0 ? -1 : 1) * height * 0.05} ${span} 0`}
+                    fill="none"
+                    stroke={(i + k) % 2 === 0 ? light : shade(color, -0.3)}
+                    strokeWidth={height * 0.045}
+                  />
+                );
+              }),
+            )}
+          </g>
+          <rect x={x0} y={top} width={w} height={height} rx={r} fill={contact} />
         </g>
       );
     }
